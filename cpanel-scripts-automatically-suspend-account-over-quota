@@ -1,0 +1,50 @@
+#!/bin/bash
+# Nandang Sopyan
+# cpanel/WHM Scripts Automatically Suspend Account Over Quota
+
+ph="domain-extension.xxx"
+am="another-email.xxx"
+EMAIL="sample@$ph,another@$am"
+HOSTING_ACCOUNT=$(cat /etc/trueuserdomains | cut -d : -f1 > /etc/mawarscripts/auto_suspend/hosting_accounts)
+LOGS=(/etc/mawarscripts/auto_suspend/logs/list_suspended_account-$(date +%F_%T))
+
+for u in $(cat /etc/mawarscripts/auto_suspend/hosting_accounts)
+do
+
+  SUSPENDED_ACCOUNT=$(/usr/sbin/whmapi1 listaccts search=$u searchtype=domain | grep -w "suspended:" | awk {'print $2'})
+  DISK_QUOTA=$(/usr/sbin/whmapi1 listaccts search=$u searchtype=domain | grep disklimit | awk {'print $NF'} | sed 's/M$//')
+  DISK_USAGE=$(/usr/sbin/whmapi1 listaccts search=$u searchtype=domain | grep diskused | awk {'print $NF'} | sed 's/M$//')
+
+  if [ "$SUSPENDED_ACCOUNT" == 1 ]; then
+    echo "Akun hosting $u sudah tersuspend"
+  else
+    if [ "$DISK_QUOTA" == "unlimited" ]; then
+      echo "Quota akun hosting $u adalah UNLIMITED. Hosting belum disuspend, Tolong cek ke TKP!">> $LOGS
+    else
+      if [ "$DISK_USAGE" -gt "$DISK_QUOTA" ] || [ "$DISK_USAGE" -eq "$DISK_QUOTA" ]; then
+        for user in `grep $u /etc/trueuserdomains`; do /scripts/suspendacct $user "Overquota";done
+        echo "$u hosting akun berhasil di suspended - Quota: $(($DISK_QUOTA))M - Total Disk Usage: $(($DISK_USAGE))M" >> $LOGS 
+        echo "$u successfully suspended"
+      else
+        echo "$u its ok"
+      fi
+    fi
+  fi
+
+done
+
+if [ -s $LOGS ]; then
+  echo "file not empty"
+  mail -s "[Overquota Suspend] - $(hostname)" $EMAIL <<EOF
+  $(cat $LOGS)
+
+  Note: script ini ngga sinkron dengan WHMCS, jadi tolong di Update manual status hosting nya di whmcs jadi suspend. thx
+EOF
+else
+  echo "file empty"
+  mail -s "[Overquota Suspend] - $(hostname)" $EMAIL <<EOF
+  None... Thank you!
+EOF
+fi
+
+rm -f /etc/mawarscripts/auto_suspend/hosting_accounts
