@@ -1,7 +1,7 @@
 #!/bin/bash
 # Nandang Sopyan
 # cpanel/WHM Scripts Automatically Suspend Account Over Quota
-# Touch Me on Github: https://github.com/ndgspn/my-bash-automation-collections/
+# Touch Me on Github: https://github.com/ndgspn/my-bash-automation-collections
 
 ph="domain-extension.xxx"
 am="another-email.xxx"
