@@ -22,7 +22,7 @@ do
     if [ "$DISK_QUOTA" == "unlimited" ]; then
       echo "Quota akun hosting $u adalah UNLIMITED. Hosting belum disuspend, Tolong cek ke TKP!">> $LOGS
     else
-      if [ "$DISK_USAGE" -gt "$DISK_QUOTA" ] || [ "$DISK_USAGE" -eq "$DISK_QUOTA" ]; then
+      if [ "$DISK_USAGE" -gt "$DISK_QUOTA" ]; then
         for user in `grep $u /etc/trueuserdomains`; do /scripts/suspendacct $user "Overquota";done
         echo "$u hosting akun berhasil di suspended - Quota: $(($DISK_QUOTA))M - Total Disk Usage: $(($DISK_USAGE))M" >> $LOGS 
         echo "$u successfully suspended"
