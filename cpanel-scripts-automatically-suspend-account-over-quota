@@ -4,7 +4,7 @@
 # Touch Me on Github: https://github.com/ndgspn/my-bash-automation-collections
 # Variable MAIL_USER, MAIL_SMTP, MAIL_PASS di setting di /etc/environment
 
-EMAIL="internal-ph@aksimaya.com"
+EMAIL="youremail@testing.xxx"
 HOSTING_ACCOUNT=$(cat /etc/trueuserdomains | cut -d : -f1 > /etc/mawarscripts/auto_suspend/hosting_accounts)
 LOGS=(/etc/mawarscripts/auto_suspend/logs/list_suspended_account-$(date +%F_%T))
 
@@ -35,14 +35,14 @@ done
 
 if [ -s $LOGS ]; then
   echo "file not empty"
-  mailx -r "notifier_no_reply@aksimaya.com" -s "[Overquota Suspend - $(hostname)]" -S smtp="$MAIL_SMTP:587" -S smtp-use-starttls -S smtp-auth=login -S smtp-auth-user="$MAIL_USER" -S smtp-auth-password="$MAIL_PASS" -S ssl-verify=ignore -S nss-config-dir="/etc/pki/nssdb/" $EMAIL <<EOF
+  mailx -r "$MAIL_USER" -s "[Overquota Suspend - $(hostname)]" -S smtp="$MAIL_SMTP:587" -S smtp-use-starttls -S smtp-auth=login -S smtp-auth-user="$MAIL_USER" -S smtp-auth-password="$MAIL_PASS" -S ssl-verify=ignore -S nss-config-dir="/etc/pki/nssdb/" $EMAIL <<EOF
   $(cat $LOGS)
 
   Note: script ini ngga sinkron dengan WHMCS, jadi tolong di Update manual status hosting nya di whmcs jadi suspend. thx
 EOF
 else
   echo "file empty"
-  mailx -r "notifier_no_reply@aksimaya.com" -s "[Overquota Suspend - $(hostname)]" -S smtp="$MAIL_SMTP:587" -S smtp-use-starttls -S smtp-auth=login -S smtp-auth-user="$MAIL_USER" -S smtp-auth-password="$MAIL_PASS" -S ssl-verify=ignore -S nss-config-dir="/etc/pki/nssdb/" $EMAIL <<EOF
+  mailx -r "$MAIL_USER" -s "[Overquota Suspend - $(hostname)]" -S smtp="$MAIL_SMTP:587" -S smtp-use-starttls -S smtp-auth=login -S smtp-auth-user="$MAIL_USER" -S smtp-auth-password="$MAIL_PASS" -S ssl-verify=ignore -S nss-config-dir="/etc/pki/nssdb/" $EMAIL <<EOF
   None... Thank you!
 EOF
 fi
