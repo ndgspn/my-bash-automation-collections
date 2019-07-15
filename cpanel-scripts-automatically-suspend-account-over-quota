@@ -2,10 +2,9 @@
 # Nandang Sopyan
 # cPanel automatic suspend for overquota account
 # Touch Me on Github: https://github.com/ndgspn/my-bash-automation-collections
+# Variable MAIL_USER, MAIL_SMTP, MAIL_PASS di setting di /etc/environment
 
-ph="domain-ext.xxx"
-am="another-exension.xxx"
-EMAIL="firstemail@$ph,another@$am"
+EMAIL="internal-ph@aksimaya.com"
 HOSTING_ACCOUNT=$(cat /etc/trueuserdomains | cut -d : -f1 > /etc/mawarscripts/auto_suspend/hosting_accounts)
 LOGS=(/etc/mawarscripts/auto_suspend/logs/list_suspended_account-$(date +%F_%T))
 
@@ -13,7 +12,7 @@ for u in $(cat /etc/mawarscripts/auto_suspend/hosting_accounts)
 do
 
   SUSPENDED_ACCOUNT=$(/usr/sbin/whmapi1 listaccts search=$u searchtype=domain searchmethod=exact | grep -w "suspended:" | awk {'print $2'})
-  DISK_QUOTA=$(/usr/sbin/whmapi1 listaccts search=$u searchtype=domain searchmethod=exact | grep disklimit | awk {'print $NF'} | sed 's/M$//') 
+  DISK_QUOTA=$(/usr/sbin/whmapi1 listaccts search=$u searchtype=domain searchmethod=exact | grep disklimit | awk {'print $NF'} | sed 's/M$//')
   DISK_USAGE=$(/usr/sbin/whmapi1 listaccts search=$u searchtype=domain searchmethod=exact | grep diskused | awk {'print $NF'} | sed 's/M$//')
 
   if [ "$SUSPENDED_ACCOUNT" == 1 ]; then
@@ -36,14 +35,14 @@ done
 
 if [ -s $LOGS ]; then
   echo "file not empty"
-  mail -s "[Overquota Suspend] - $(hostname)" $EMAIL <<EOF
+  mailx -r "notifier_no_reply@aksimaya.com" -s "[Overquota Suspend - $(hostname)]" -S smtp="$MAIL_SMTP:587" -S smtp-use-starttls -S smtp-auth=login -S smtp-auth-user="$MAIL_USER" -S smtp-auth-password="$MAIL_PASS" -S ssl-verify=ignore -S nss-config-dir="/etc/pki/nssdb/" $EMAIL <<EOF
   $(cat $LOGS)
 
   Note: script ini ngga sinkron dengan WHMCS, jadi tolong di Update manual status hosting nya di whmcs jadi suspend. thx
 EOF
 else
   echo "file empty"
-  mail -s "[Overquota Suspend] - $(hostname)" $EMAIL <<EOF
+  mailx -r "notifier_no_reply@aksimaya.com" -s "[Overquota Suspend - $(hostname)]" -S smtp="$MAIL_SMTP:587" -S smtp-use-starttls -S smtp-auth=login -S smtp-auth-user="$MAIL_USER" -S smtp-auth-password="$MAIL_PASS" -S ssl-verify=ignore -S nss-config-dir="/etc/pki/nssdb/" $EMAIL <<EOF
   None... Thank you!
 EOF
 fi
