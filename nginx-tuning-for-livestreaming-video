@@ -288,3 +288,4 @@ https://dev.to/samuyi/how-to-setup-nginx-for-hls-video-streaming-on-centos-7-3jb
 https://docs.peer5.com/guides/use-nginx-as-wowza-cache/
 https://docs.peer5.com/guides/server-optimization/
 https://serverfault.com/questions/769978/sysctl-cannot-stat-proc-sys-net-ipv4-netfilter-ip-conntrack-max-no-such-file
+https://www.wowza.com/docs/support-xff-headers-for-http-streaming-requests-wowza-streaming-engine
