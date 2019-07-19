@@ -1,0 +1,284 @@
+========== Pre Configuration Section ====================
+#!/bin/bash
+# Update
+cd
+sudo apt-get update -y
+sudo apt-get install build-essential -y
+sudo apt install gcc libpcre3-dev zlib1g-dev libssl-dev libxml2-dev libxslt1-dev  libgd-dev google-perftools libgoogle-perftools-dev libperl-dev libgeoip-dev -y
+
+# Install PCRE
+wget ftp://ftp.csx.cam.ac.uk/pub/software/programming/pcre/pcre-8.42.tar.gz
+tar -zxf pcre-8.42.tar.gz
+rm -rf pcre-8.42.tar.gz
+cd pcre-8.42
+./configure
+make
+sudo make install
+cd
+
+# Install zlib
+wget http://zlib.net/zlib-1.2.11.tar.gz
+tar -zxf zlib-1.2.11.tar.gz
+rm -rf zlib-1.2.11.tar.gz
+cd zlib-1.2.11
+./configure
+make
+sudo make install
+cd
+
+# Install openssl
+wget http://www.openssl.org/source/openssl-1.0.2q.tar.gz
+tar -zxf openssl-1.0.2q.tar.gz
+rm -rf openssl-1.0.2.tar.gz
+cd openssl-1.0.2q
+./config
+make
+sudo make install
+cd
+
+# Download Nginx & compile
+wget http://nginx.org/download/nginx-1.17.1.tar.gz
+tar -xf nginx-1.17.1.tar.gz
+rm -rf nginx-1.17.1.tar.gz
+cd nginx-1.17.1
+./configure --sbin-path=/usr/sbin/nginx --lock-path=/var/run/nginx.lock --conf-path=/etc/nginx/nginx.conf --pid-path=/run/nginx.pid --with-pcre=../pcre-8.42 --with-zlib=../zlib-1.2.11 --with-openssl=../openssl-1.0.2q --error-log-path=/var/log/nginx/error.log --http-log-path=/var/log/nginx/access.log --user=nginx --group=nginx --with-http_auth_request_module --with-http_degradation_module --with-http_geoip_module --with-http_gunzip_module --with-http_gzip_static_module --with-http_image_filter_module --with-http_mp4_module --with-http_perl_module --with-http_realip_module --with-http_secure_link_module --with-http_slice_module --with-http_ssl_module --with-http_stub_status_module --with-http_v2_module --with-stream_ssl_module --with-stream --with-threads --prefix=/etc/nginx
+make
+make install
+
+# add nginx user
+useradd --system --home /var/lib/nginx --shell /sbin/nologin --comment "nginx system user" nginx
+
+# nginx log
+mkdir /var/log/nginx &&  sudo chown nginx:nginx /var/log/nginx 
+
+# Install tmpreaper for cleaning cache
+apt install tmpreaper -y
+
+# Seting tmpreaper untuk hapus cache tmp nginx menggunakan cron setiap 5menit, kalau pakai centos biasanya pakai tmpwatch
+* * * * * /usr/sbin/tmpreaper 5m /var/cache/nginx/wowza_cache_temp/
+========== End Of Pre Configuration Section =============
+
+========== Nginx Vhost ==================================
+#user nginx;
+worker_processes auto;
+pid /var/run/nginx.pid;
+worker_rlimit_nofile 1048576;
+
+events {
+    worker_connections 1048576;
+    multi_accept on;
+    use epoll;
+}
+
+http {
+    # upstream
+    upstream streamWowza {
+	server ip_wowza_server_disini;
+    }
+
+    # basic
+    sendfile on;
+    tcp_nopush on;
+    tcp_nodelay on;
+    server_tokens off;
+    keepalive_timeout 300s;
+    types_hash_max_size 2048;
+    include /etc/nginx/mime.types;
+    default_type application/octet-stream;
+
+    # ssl
+    ssl_ciphers "ECDHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-SHA384:ECDHE-RSA-AES128-SHA256:ECDHE-RSA-AES256-SHA:ECDHE-RSA-AES128-SHA:DHE-RSA-AES256-SHA256:DHE-RSA-AES128-SHA256:DHE-RSA-AES256-SHA:DHE-RSA-AES128-SHA:ECDHE-RSA-DES-CBC3-SHA:EDH-RSA-DES-CBC3-SHA:AES256-GCM-SHA384:AES128-GCM-SHA256:AES256-SHA256:AES128-SHA256:AES256-SHA:AES128-SHA:DES-CBC3-SHA:HIGH:!aNULL:!eNULL:!EXPORT:!DES:!MD5:!PSK:!RC4";
+    ssl_protocols TLSv1 TLSv1.1 TLSv1.2;
+    ssl_prefer_server_ciphers on;
+    ssl_session_cache shared:SSL:50m;
+    ssl_session_tickets off;
+    ssl_stapling on;
+    ssl_stapling_verify on;
+    # ssl_dhparam /etc/ssl/certs/dhparam.pem; # need to generate the .pem certifiate before using this
+    resolver 8.8.4.4 8.8.8.8 valid=300s ipv6=off;
+    resolver_timeout 10s;
+
+    # logs
+    access_log off;
+    error_log /var/log/nginx/error.log;
+
+    # gzip
+    gzip on;
+    gzip_disable "msie6";
+    gzip_http_version 1.1;
+    gzip_comp_level 6;
+    gzip_types text/plain text/css application/json application/javascript text/javascript application/x-javascript text/xml application/xml application/xml+rss application/vnd.ms-fontobject application/x-font-ttf font/opentype font/x-woff image/svg+xml image/x-icon;
+
+    # proxy
+    proxy_redirect off;
+    proxy_http_version 1.1;
+    proxy_read_timeout 10s;
+    proxy_send_timeout 10s;
+    proxy_connect_timeout 10s;
+    proxy_cache_path /var/cache/nginx/wowza_cache_temp use_temp_path=off keys_zone=wowza_cache_temp:10m max_size=20g inactive=10m;
+    proxy_cache wowza_cache_temp;
+    proxy_cache_methods GET HEAD;
+    proxy_cache_key $uri;
+    proxy_cache_valid 200 302 5m;
+    proxy_cache_valid 404 3s;
+    proxy_cache_lock on;
+    proxy_cache_lock_age 5s;
+    proxy_cache_lock_timeout 1h;
+    proxy_ignore_headers Cache-Control;
+    proxy_ignore_headers Set-Cookie;
+
+    # ssl route
+    server {
+        listen 443 default_server ssl;
+
+        ssl_certificate /etc/nginx/ssl/cs_ssl.crt;
+        ssl_certificate_key /etc/nginx/ssl/cs_ssl.key;
+
+        add_header X-Cache-Status $upstream_cache_status;
+
+        location ~ \.(m3u8|mpd)$ {
+	proxy_cache_valid 200 302 5s;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_redirect off;
+        
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+
+            proxy_pass http://streamWowza;
+        }
+
+        location / {
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_redirect off;
+        
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+
+            proxy_pass http://streamWowza;
+        }
+    }
+
+    # default route
+    server {
+        listen 80 default_server;
+
+        #listen 443 ssl default_server;
+        #ssl_certificate /path/to/cert.crt;
+        #ssl_certificate_key /path/to/cert.key;
+
+        add_header X-Cache-Status $upstream_cache_status;
+
+        location ~ \.(m3u8|mpd)$ {
+	proxy_cache_valid 200 302 5s;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_redirect off;
+        
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+
+            proxy_pass http://streamWowza;
+        }
+
+        location / {
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_redirect off;
+        
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+
+            proxy_pass http://streamWowza;
+        }
+    }
+}
+========== End of nginx example =================================================================
+
+========== Nginx systemd supaya nginx bisa dijalan via systemctl ================================
+# Buat file /lib/systemd/system/nginx.service lalu isinya seperti dibawah ini:
+
+[Unit]
+Description=nginx - high performance web server
+Documentation=https://nginx.org/en/docs/
+After=network.target remote-fs.target nss-lookup.target
+Wants=network-online.target
+[Service]
+Type=forking
+PIDFile=/run/nginx.pid
+ExecStartPre=/bin/rm -f /run/nginx.pid 
+ExecStartPre=/usr/sbin/nginx -t -c /etc/nginx/nginx.conf
+ExecStart=/usr/sbin/nginx -c /etc/nginx/nginx.conf
+ExecReload=/bin/kill -s HUP $MAINPID
+KillSignal=SIGQUIT
+TimeoutStopSec=5
+KillMode=process
+PrivateTmp=true
+[Install]
+WantedBy=multi-user.target
+
+# Jalankan nginx sebagai service
+systemctl daemon-reload
+sudo systemctl start nginx
+sudo systemctl enable nginx
+========== End of Nginx systemd =========================
+
+========== Server Tuning ================================
+# Tune Global Limits supaya ngga kena limit nginx nya ketika banyak akses
+# di ubuntu /etc/sysctl.conf
+fs.file-max=1048576
+fs.inotify.max_user_instances=1048576
+fs.inotify.max_user_watches=1048576
+fs.nr_open=1048576
+net.core.default_qdisc=fq
+net.core.netdev_max_backlog=1048576
+net.core.rmem_max=16777216
+net.core.somaxconn=65535
+net.core.wmem_max=16777216
+net.ipv4.ip_local_port_range=1024 65535
+net.netfilter.ip_conntrack_max=1048576
+net.ipv4.tcp_fin_timeout=5
+net.ipv4.tcp_max_orphans=1048576
+net.ipv4.tcp_max_syn_backlog=20480
+net.ipv4.tcp_max_tw_buckets=400000
+net.ipv4.tcp_no_metrics_save=1
+net.ipv4.tcp_rmem=4096 87380 16777216
+net.ipv4.tcp_slow_start_after_idle=0
+net.ipv4.tcp_synack_retries=2
+net.ipv4.tcp_syn_retries=2
+net.ipv4.tcp_tw_reuse=1
+net.ipv4.tcp_wmem=4096 65535 16777216
+net.nf_conntrack_max=1048576
+vm.max_map_count=1048576
+vm.min_free_kbytes=65535
+vm.overcommit_memory=1
+vm.swappiness=0
+vm.vfs_cache_pressure=50
+
+# di /etc/security/limits.conf sebelum End of file
+*               soft    nofile          1048576
+*               hard    nofile          1048576
+root            soft    nofile          1048576
+root            hard    nofile          1048576
+*               soft    nproc           1048576
+*               hard    nproc           1048576
+root            soft    nproc           1048576
+root            hard    nproc           1048576
+*               soft    memlock         unlimited
+*               hard    memlock         unlimited
+root            soft    memlock         unlimited
+root            hard    memlock         unlimited
+*               soft    core            0
+*               hard    core            0
+root            soft    core            0
+root            hard    core            0
+========== End Of Server Tuning =========================
