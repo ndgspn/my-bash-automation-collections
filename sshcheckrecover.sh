@@ -24,11 +24,11 @@ check_ssh_pid() {
 }
 
 stop_start_ssh() {
-    service sshd stop
-    sleep 2
-    service sshd start
+    /sbin/service sshd stop
+    /bin/sleep 2
+    /sbin/service sshd start
     echo "Still running up the service. Please wait..."
-    sleep 5
+    /bin/sleep 5
 }
 
 send_email_up() {
