@@ -3,7 +3,7 @@
 #jamu ssh untuk server abah
 
 isActive=0
-email_addr="your_email@domain.xxx"
+emailAddr="your_email@domain.xxx"
 
 check_ssh_status() {
     sshStatus=$(service sshd status | grep -c -w "running")
@@ -32,13 +32,13 @@ stop_start_ssh() {
 }
 
 send_email_up() {
-    mail -s "ssh service recovery from $(hostname)" $email_addr <<EOF
+    mail -s "ssh service recovery from $(hostname)" $emailAddr <<EOF
 	    ssh restarted successfully
 EOF
 }
 
 send_email_failed() {
-    mail -s "ssh service recovery failed from $(hostname)" $email_addr <<EOF
+    mail -s "ssh service recovery failed from $(hostname)" $emailAddr <<EOF
 	    ssh restart failed!!!
 EOF
 }
