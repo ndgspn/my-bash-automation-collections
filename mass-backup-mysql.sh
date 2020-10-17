@@ -1,5 +1,6 @@
 #!/bin/bash
 #Nandang Sopyan
+#http://nandang.id
 
 DATE=$(date +%d-%m-%Y)
 BACKUP_DIR="/home/syspc/Downloads/pahami"
